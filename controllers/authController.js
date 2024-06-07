@@ -4,10 +4,6 @@ const { body, validationResult } = require("express-validator");
 const passport = require("passport");
 const bcrypt = require("bcryptjs");
 
-exports.index = asyncHandler(async (req, res, next) => {
-  res.render("index", { title: "Home", user: req.user });
-});
-
 // Display Sign Up form on GET
 exports.sign_up_get = asyncHandler(async (req, res, next) => {
   res.render("sign-up-form");

@@ -5,15 +5,17 @@ const { body, validationResult } = require("express-validator");
 
 /*
 TODO:
-- Edit existing message (Validate Form)
-- Delete existing message (Admin Only, Validate Form)
-- Members can only see author of message
+- Edit existing message (Validate Form) - Edit Own Message
 */
 
 // Display Home page on GET
 exports.index = asyncHandler(async (req, res, next) => {
-  const messages = await Message.find().populate('user');
-
+  const messages = await Message.find().populate("user");
+  if (req.user === undefined) {
+    console.log('Not');
+  } else {
+    console.log(req.user._id);
+  }
   res.render("index", { title: "Home", user: req.user, messages: messages });
 });
 
@@ -68,11 +70,11 @@ exports.join_club_post = [
 ];
 
 exports.create_message_get = asyncHandler(async (req, res, next) => {
-  res.render("create-message-form", { title: "Create Message" });
+  res.render("message-form", { title: "Create Message" });
 });
 
 exports.create_message_post = [
-  body("new-message")
+  body("message")
     .trim()
     .isLength({ min: 1 })
     .escape()
@@ -87,7 +89,7 @@ exports.create_message_post = [
     const errors = validationResult(req);
 
     if (!errors.isEmpty()) {
-      res.render("create-message-form", {
+      res.render("message-form", {
         title: "Create Message",
         user: req.user,
         errors: errors.array(),
@@ -99,7 +101,7 @@ exports.create_message_post = [
       user: req.user._id,
       title: req.body.title,
       post_date: Date(),
-      text: req.body["new-message"],
+      text: req.body.message,
     });
 
     await message.save();
@@ -108,6 +110,74 @@ exports.create_message_post = [
   }),
 ];
 
-exports.edit_message = asyncHandler(async (req, res, next) => {});
+exports.edit_message_get = asyncHandler(async (req, res, next) => {
+  const message = await Message.findById(req.params.id).populate('user').exec();
+  console.log('Received ID:', req.params.id);
 
-exports.delete_message = asyncHandler(async (req, res, next) => {});
+  if (!message == null) {
+    console.log("Message not found");
+    const err = new Error("Message not found");
+    err.status = 404;
+    return next(err);
+  }
+
+  res.render("message-form", {
+    title: "Edit Message",
+    message: message,
+  });
+});
+
+exports.edit_message_post = [
+  body("message")
+    .trim()
+    .isLength({ min: 1 })
+    .escape()
+    .withMessage("Message cannot be empty"),
+  body("title")
+    .trim()
+    .isLength({ min: 1 })
+    .escape()
+    .withMessage("Title for message cannot be empty"),
+
+  asyncHandler(async (req, res, next) => {
+    const errors = validationResult(req);
+
+    const editedMessage = {
+      title: req.body.title,
+      post_date: Date(),
+      text: req.body.message,
+    };
+
+    if (!errors.isEmpty()) {
+
+      res.render("message-form", {
+        title: "Edit Message",
+        message: editedMessage,
+        user: req.user,
+        errors: errors.array(),
+      });
+      return;
+    } else {
+      await Message.findByIdAndUpdate(req.params.id, editedMessage, { new: true });
+      res.redirect(`/`);
+    }
+  }),
+];
+
+exports.delete_message_get = asyncHandler(async (req, res, next) => {
+  const message = await Message.findById(req.params.id).exec();
+
+  if (message === null) {
+    res.redirect("/");
+  }
+
+  res.render("delete-message", {
+    title: "Delete Message",
+    message: message,
+  });
+});
+
+exports.delete_message_post = asyncHandler(async (req, res, next) => {
+  await Message.findByIdAndDelete(req.body.messageId);
+  res.redirect("/");
+});

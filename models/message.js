@@ -9,4 +9,8 @@ const MessageSchema = new Schema({
     text: { type: String, required: true}
 });
 
+MessageSchema.virtual('url').get(function () {
+    return `/message/${this._id}`;
+});
+
 module.exports = mongoose.model("Message", MessageSchema);
